@@ -5,3 +5,11 @@ This library allows you to move your entity records through stages of Business P
 * Refactore BusinessProcessFlowClientData class because it was basically generated from raw json
 * Add branching support
 * More useful functions
+
+# Example
+
+```
+Entity entity = (Entity)context.InputParameters["Target"];
+var stageManager = BusinessProcessFlowManager.BusinessProcessFlowManager.InitForEntity(service, entity);
+stageManager.NextStage(entity);
+```
