@@ -22,21 +22,15 @@ namespace BusinessProcessFlowManager
         private Entity _process;
         private BusinessProcessFlowClientData _businessProcessFlowClientData;
 
-        public string ProcessName
-        {
-            get { return _process.GetAttributeValue<string>("name"); }
-        }
+        public string ProcessName => _process.GetAttributeValue<string>("name");
 
-        public Guid ProcessId
-        {
-            get { return _process.Id; }
-        }
+        public Guid ProcessId => _process.Id;
 
         public Dictionary<Guid, Stage> Stages { get; private set; }
 
         private BusinessProcessFlowManager()
-        { 
-
+        {
+            Stages = new Dictionary<Guid, Stage>();
         }
 
         public static BusinessProcessFlowManager InitForEntity(IOrganizationService service, EntityReference entityReference)
@@ -51,8 +45,7 @@ namespace BusinessProcessFlowManager
 
         public static BusinessProcessFlowManager InitForEntity(IOrganizationService service, Guid entityId, string entityLogicalName)
         {
-            var manager = new BusinessProcessFlowManager();
-            manager._service = service;
+            var manager = new BusinessProcessFlowManager { _service = service };
             var entity = service.Retrieve(entityLogicalName, entityId, new ColumnSet("processid"));
             manager._process = manager.RetrieveProcessById(entity.GetAttributeValue<Guid>("processid"));
             manager.Init();
@@ -61,8 +54,7 @@ namespace BusinessProcessFlowManager
 
         public static BusinessProcessFlowManager InitByProcessName(IOrganizationService service, string processName)
         {
-            var manager = new BusinessProcessFlowManager();
-            manager._service = service;
+            var manager = new BusinessProcessFlowManager { _service = service };
             manager._process = manager.RetrieveProcessByName(processName);
             manager.Init();
             return manager;
@@ -70,8 +62,7 @@ namespace BusinessProcessFlowManager
 
         public static BusinessProcessFlowManager InitByProcessId(IOrganizationService service, Guid processId)
         {
-            var manager = new BusinessProcessFlowManager();
-            manager._service = service;
+            var manager = new BusinessProcessFlowManager { _service = service };
             manager._process = manager.RetrieveProcessById(processId);
             manager.Init();
             return manager;
@@ -80,7 +71,6 @@ namespace BusinessProcessFlowManager
         private void Init()
         {
             _businessProcessFlowClientData = ParseBusinessProcessFlow();
-            Stages = new Dictionary<Guid, Stage>();
             Convert();
         }
 
@@ -90,7 +80,7 @@ namespace BusinessProcessFlowManager
             {
                 if (!item.steps.list.Any()) continue;
                 var stageItem = item.steps.list.Single();
-                var stage = string.IsNullOrWhiteSpace(stageItem.nextStageId) ? new Stage(Guid.Parse(stageItem.stageId)) : new Stage(Guid.Parse(stageItem.stageId), Guid.Parse(stageItem.nextStageId));
+                var stage = string.IsNullOrWhiteSpace(stageItem.nextStageId) ? new Stage(stageItem.description, Guid.Parse(stageItem.stageId)) : new Stage(stageItem.description, Guid.Parse(stageItem.stageId), Guid.Parse(stageItem.nextStageId));
                 foreach (var stepItem in stageItem.steps.list)
                 {
                     var step = new Step()

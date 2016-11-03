@@ -11,18 +11,21 @@ namespace BusinessProcessFlowManager
         public List<Step> Steps { get; }
         public Guid StageId;
         public Guid? NextStageId;
+        public string Description;
 
-        public Stage(Guid stageId)
+        public Stage(string description, Guid stageId)
         {
             StageId = stageId;
             Steps = new List<Step>();
+            Description = description;
         }
 
-        public Stage(Guid stageId, Guid nextStageId)
+        public Stage(string description, Guid stageId, Guid nextStageId)
         {
             StageId = stageId;
             NextStageId = nextStageId;
             Steps = new List<Step>();
+            Description = description;
         }
 
         public void AddStep(string stepName, string fieldName, bool isRequired)
