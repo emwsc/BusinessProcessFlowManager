@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
@@ -21,6 +19,7 @@ namespace BusinessProcessFlowManager
         private IOrganizationService _service;
         private Entity _process;
         private BusinessProcessFlowClientData _businessProcessFlowClientData;
+        private Entity _targetEntity;
 
         public string ProcessName => _process.GetAttributeValue<string>("name");
 
@@ -48,7 +47,7 @@ namespace BusinessProcessFlowManager
             var manager = new BusinessProcessFlowManager { _service = service };
             var entity = service.Retrieve(entityLogicalName, entityId, new ColumnSet("processid"));
             manager._process = manager.RetrieveProcessById(entity.GetAttributeValue<Guid>("processid"));
-            manager.Init();
+            manager.Init(entityLogicalName, entityId);
             return manager;
         }
 
@@ -66,6 +65,12 @@ namespace BusinessProcessFlowManager
             manager._process = manager.RetrieveProcessById(processId);
             manager.Init();
             return manager;
+        }
+
+        private void Init(string entityLogicalName, Guid entityId)
+        {
+            _targetEntity = new Entity(entityLogicalName) { Id = entityId };
+            Init();
         }
 
         private void Init()
@@ -116,15 +121,20 @@ namespace BusinessProcessFlowManager
             return process;
         }
 
-
-        public void NextStage(Entity entity)
+        public MoveState NextStage()
         {
-            NextStage(entity.Id, entity.LogicalName);
+            if (_targetEntity == null) throw new Exception("Target entity is undefined");
+            return NextStage(_targetEntity);
         }
 
-        public void NextStage(EntityReference entityReference)
+        public MoveState NextStage(Entity entity)
         {
-            NextStage(entityReference.Id, entityReference.LogicalName);
+            return NextStage(entity.Id, entity.LogicalName);
+        }
+
+        public MoveState NextStage(EntityReference entityReference)
+        {
+            return NextStage(entityReference.Id, entityReference.LogicalName);
         }
 
 
@@ -154,10 +164,13 @@ namespace BusinessProcessFlowManager
         public void MoveTo(Guid entityId, string entityLogicalName, Stage stage, string currentTraversedPath)
         {
             if (!stage.NextStageId.HasValue) return;
-            var entity = new Entity(entityLogicalName) { Id = entityId };
-            entity["stageid"] = stage.NextStageId.Value;
-            entity["processid"] = _process.Id;
-            entity["traversedpath"] = currentTraversedPath + $",{stage.NextStageId.Value}";
+            var entity = new Entity(entityLogicalName)
+            {
+                Id = entityId,
+                ["stageid"] = stage.NextStageId.Value,
+                ["processid"] = _process.Id,
+                ["traversedpath"] = currentTraversedPath + $",{stage.NextStageId.Value}"
+            };
             _service.Update(entity);
         }
     }
