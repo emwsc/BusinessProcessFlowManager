@@ -34,5 +34,8 @@ namespace BusinessProcessFlowManager
         {
             Steps.Add(step);
         }
+
+
+        public bool IsLastStage() => NextStageId == null;
     }
 }

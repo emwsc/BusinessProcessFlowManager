@@ -39,7 +39,11 @@
     <Reference Include="Microsoft.Xrm.Sdk">
       <HintPath>..\..\..\..\CRM SDK\2016\SDK\Bin\Microsoft.Xrm.Sdk.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Xrm.Sdk.Workflow">
+      <HintPath>..\..\..\..\CRM SDK\2016\SDK\Bin\Microsoft.Xrm.Sdk.Workflow.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Activities" />
     <Reference Include="System.Core" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Web.Extensions" />
@@ -51,11 +55,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BusinessProcessFlowClientData.cs" />
-    <Compile Include="BusinessProcessFlowManager.cs" />
+    <Compile Include="Helpers\CrmHelper.cs" />
+    <Compile Include="Manager\BusinessProcessFlowClientData.cs" />
+    <Compile Include="Manager\BusinessProcessFlowManager.cs" />
+    <Compile Include="WorkflowActions\MoveWorkflowAction.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Stage.cs" />
-    <Compile Include="Step.cs" />
+    <Compile Include="Manager\Stage.cs" />
+    <Compile Include="Manager\Step.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Key.snk" />

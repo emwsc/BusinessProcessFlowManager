@@ -12,7 +12,9 @@ namespace BusinessProcessFlowManager
 
         public enum MoveState
         {
+            None,
             Success,
+            LastStage,
             RequiredFieldIsEmpty
         }
 
@@ -121,17 +123,31 @@ namespace BusinessProcessFlowManager
             return process;
         }
 
+        /// <summary>
+        /// Move record to next stage. This functions will check required fields on current stage before move to next. Works only if manager enabled from entity.
+        /// </summary>
+        /// <returns>Move state enum</returns>
         public MoveState NextStage()
         {
             if (_targetEntity == null) throw new Exception("Target entity is undefined");
             return NextStage(_targetEntity);
         }
 
+        /// <summary>
+        /// Move record to next stage. This functions will check required fields on current stage before move to next.
+        /// </summary>
+        /// <param name="entity">Entity record</param>
+        /// <returns>Move state enum</returns>
         public MoveState NextStage(Entity entity)
         {
             return NextStage(entity.Id, entity.LogicalName);
         }
 
+        /// <summary>
+        /// Move record to next stage. This functions will check required fields on current stage before move to next.
+        /// </summary>
+        /// <param name="entityReference">Entity reference</param>
+        /// <returns>Move state enum</returns>
         public MoveState NextStage(EntityReference entityReference)
         {
             return NextStage(entityReference.Id, entityReference.LogicalName);
@@ -148,20 +164,27 @@ namespace BusinessProcessFlowManager
             return true;
         }
 
+        /// <summary>
+        /// Move record to next stage. This functions will check required fields on current stage before move to next.
+        /// </summary>
+        /// <param name="entityId">Record id</param>
+        /// <param name="entityLogicalName">Entity logical name</param>
+        /// <returns>Move state enum</returns>
         public MoveState NextStage(Guid entityId, string entityLogicalName)
         {
             var entity = _service.Retrieve(entityLogicalName, entityId, new ColumnSet("stageid", "processid", "traversedpath"));
             var currentPath = entity.GetAttributeValue<string>("traversedpath");
             if (entity.GetAttributeValue<Guid>("processid") != _process.Id) throw new Exception("Wrong process");
             var currentStage = Stages[entity.GetAttributeValue<Guid>("stageid")];
-            if (!currentStage.Steps.Any(x => x.IsRequired)) MoveTo(entityId, entityLogicalName, currentStage, entity.GetAttributeValue<string>("traversedpath"));
+            if (currentStage.IsLastStage()) return MoveState.LastStage;
+            if (!currentStage.Steps.Any(x => x.IsRequired)) NextStage(entityId, entityLogicalName, currentStage, entity.GetAttributeValue<string>("traversedpath"));
             entity = _service.Retrieve(entityLogicalName, entityId, new ColumnSet(currentStage.Steps.Where(x => x.IsRequired).Select(x => x.FieldName).ToArray()));
             if (!AllowMove(currentStage, entity)) return MoveState.RequiredFieldIsEmpty;
-            MoveTo(entityId, entityLogicalName, currentStage, currentPath);
+            NextStage(entityId, entityLogicalName, currentStage, currentPath);
             return MoveState.Success;
         }
 
-        public void MoveTo(Guid entityId, string entityLogicalName, Stage stage, string currentTraversedPath)
+        private void NextStage(Guid entityId, string entityLogicalName, Stage stage, string currentTraversedPath)
         {
             if (!stage.NextStageId.HasValue) return;
             var entity = new Entity(entityLogicalName)
@@ -172,6 +195,105 @@ namespace BusinessProcessFlowManager
                 ["traversedpath"] = currentTraversedPath + $",{stage.NextStageId.Value}"
             };
             _service.Update(entity);
+        }
+
+
+        /// <summary>
+        /// Move to selected stage. This functions ignors all required fields. Works only if manager enabled from entity.
+        /// </summary>
+        /// <param name="stage">Selected stage</param>
+        /// <returns>Move state enum</returns>
+        public MoveState MoveTo(Stage stage)
+        {
+            if (_targetEntity == null) throw new Exception("Target entity is undefined");
+            return MoveTo(_targetEntity.Id, _targetEntity.LogicalName, stage);
+        }
+
+        /// <summary>
+        /// Move to selected stage. This functions ignors all required fields
+        /// </summary>
+        /// <param name="entityReference">Entity reference</param>
+        /// <param name="stage">Selected stage</param>
+        /// <returns>Move state enum</returns>
+        public MoveState MoveTo(EntityReference entityReference, Stage stage)
+        {
+            return MoveTo(entityReference.Id, entityReference.LogicalName, stage);
+        }
+
+        /// <summary>
+        /// Move to selected stage. This functions ignors all required fields
+        /// </summary>
+        /// <param name="entity">Entity record</param>
+        /// <param name="stage">Selected stage</param>
+        /// <returns>Move state enum</returns>
+        public MoveState MoveTo(Entity entity, Stage stage)
+        {
+            return MoveTo(entity.Id, entity.LogicalName, stage);
+        }
+
+        /// <summary>
+        /// Move to selected stage. This functions ignors all required fields
+        /// </summary>
+        /// <param name="entityId">Record id</param>
+        /// <param name="entityLogicalName">Entity logical name</param>
+        /// <param name="stage">Selected stage</param>
+        /// <returns>Move state enum</returns>
+        public MoveState MoveTo(Guid entityId, string entityLogicalName, Stage stage)
+        {
+            var currentTraversedPath = string.Join(",", Stages.Values.TakeWhile(x => x.StageId != stage.StageId));
+            var entity = new Entity(entityLogicalName)
+            {
+                Id = entityId,
+                ["stageid"] = stage,
+                ["processid"] = _process.Id,
+                ["traversedpath"] = currentTraversedPath + $",{stage.StageId}"
+            };
+            return MoveState.Success;
+        }
+
+        /// <summary>
+        /// Moving record until it's possible. Only working if manager was enabled from entity.
+        /// </summary>
+        /// <returns>Move state enum</returns>
+        public MoveState Move()
+        {
+            if (_targetEntity == null) throw new Exception("Target entity is undefined");
+            return Move(_targetEntity);
+
+        }
+
+        /// <summary>
+        /// Moving record until it's possible.
+        /// </summary>
+        /// <param name="entityReference">Entity reference</param>
+        /// <returns>Move state enum</returns>
+        public MoveState Move(EntityReference entityReference)
+        {
+            return Move(entityReference.Id, entityReference.LogicalName);
+        }
+
+        /// <summary>
+        /// Moving record until it's possible.
+        /// </summary>
+        /// <param name="entity">Entity record</param>
+        /// <returns>Move state enum</returns>
+        public MoveState Move(Entity entity)
+        {
+            return Move(entity.Id, entity.LogicalName);
+        }
+
+        /// <summary>
+        /// Moving record until it's possible.
+        /// </summary>
+        /// <param name="entityId">Record Id</param>
+        /// <param name="entityLogicalName">Entity Logical Name</param>
+        /// <returns>Move state enum</returns>
+        public MoveState Move(Guid entityId, string entityLogicalName)
+        {
+            var moveState = MoveState.None;
+            while (moveState != MoveState.RequiredFieldIsEmpty && moveState != MoveState.LastStage)
+                moveState = NextStage(entityId, entityLogicalName);
+            return moveState;
         }
     }
 }
