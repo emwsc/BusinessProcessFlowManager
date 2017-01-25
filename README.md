@@ -17,4 +17,4 @@ stageManager.NextStage(entity);
 
 # Disclaimer
 
-Use at your own risk. Tottaly unsupported, but works.
+Use at your own risk. Based on unsupported things, but works.
