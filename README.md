@@ -13,3 +13,8 @@ Entity entity = (Entity)context.InputParameters["Target"];
 var stageManager = BusinessProcessFlowManager.BusinessProcessFlowManager.InitForEntity(service, entity);
 stageManager.NextStage(entity);
 ```
+
+
+# Disclaimer
+
+Use at your own risk. Tottaly unsupported, but works.
