@@ -29,6 +29,7 @@ namespace BusinessProcessFlowManager
         public object attributeName { get; set; }
         public bool isClosedLoop { get; set; }
         public string stageId { get; set; }
+        public string parentStageId { get; set; }
         public string nextStageId { get; set; }
         public string stageCategory { get; set; }
         public string labelId { get; set; }
@@ -46,6 +47,8 @@ namespace BusinessProcessFlowManager
         public bool isUnbound { get; set; }
         public string controlType { get; set; }
 
+        public Conditionexpression conditionExpression { get; set; }
+
 
 
         public class Steplabels
@@ -57,6 +60,55 @@ namespace BusinessProcessFlowManager
         {
             [DataMember(Name = "List")]
             public BusinessProcessFlowClientData[] list { get; set; }
+        }
+
+
+        public class Conditionexpression
+        {
+            public string __class { get; set; }
+            public string type { get; set; }
+            public bool typeSet { get; set; }
+            public int behavior { get; set; }
+            public string conditionOperatoroperator { get; set; }
+            public Left left { get; set; }
+            public Right[] right { get; set; }
+        }
+
+        public class Left
+        {
+            public string __class { get; set; }
+            public string type { get; set; }
+            public bool typeSet { get; set; }
+            public int behavior { get; set; }
+            public Entity entity { get; set; }
+            public string attributeName { get; set; }
+        }
+
+        public class Entity
+        {
+            public string __class { get; set; }
+            public string parameterName { get; set; }
+            public string entityName { get; set; }
+        }
+
+        public class Right
+        {
+            public string __class { get; set; }
+            public string type { get; set; }
+            public bool typeSet { get; set; }
+            public int behavior { get; set; }
+            public string entityType { get; set; }
+            public string label { get; set; }
+            public Staticvalue staticValue { get; set; }
+        }
+
+        public class Staticvalue
+        {
+            public string __class { get; set; }
+            public string type { get; set; }
+            public bool typeSet { get; set; }
+            public int behavior { get; set; }
+            public string primitiveValue { get; set; }
         }
     }
 }

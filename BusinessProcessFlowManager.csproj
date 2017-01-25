@@ -58,6 +58,8 @@
     <Compile Include="Helpers\CrmHelper.cs" />
     <Compile Include="Manager\BusinessProcessFlowClientData.cs" />
     <Compile Include="Manager\BusinessProcessFlowManager.cs" />
+    <Compile Include="Manager\Condition.cs" />
+    <Compile Include="Manager\StepClasses.cs" />
     <Compile Include="WorkflowActions\MoveWorkflowAction.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Manager\Stage.cs" />

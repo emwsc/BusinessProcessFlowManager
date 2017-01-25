@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Script.Serialization;
+using BusinessProcessFlowManager.Manager;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 
@@ -90,13 +91,39 @@ namespace BusinessProcessFlowManager
                 var stage = string.IsNullOrWhiteSpace(stageItem.nextStageId) ? new Stage(stageItem.description, Guid.Parse(stageItem.stageId)) : new Stage(stageItem.description, Guid.Parse(stageItem.stageId), Guid.Parse(stageItem.nextStageId));
                 foreach (var stepItem in stageItem.steps.list)
                 {
-                    var step = new Step()
+                    if (StepClasses.IsJSStep(stepItem.__class)) continue;
+                    if (StepClasses.IsConditionBranch(stepItem.__class))
                     {
-                        IsRequired = stepItem.isProcessRequired,
-                        FieldName = stepItem.steps.list.Single().dataFieldName,
-                        StepName = stepItem.steps.list.Single().controlDisplayName
-                    };
-                    stage.AddStep(step);
+                        for (var i = 0; i < stepItem.steps.list.Length; i++)
+                        {
+                            var stepWithCondition = stepItem.steps.list[i];
+                            if (stepWithCondition.conditionExpression == null)
+                            {
+                                stage.NextStageId = Guid.Parse(stepWithCondition.steps.list.Single().stageId);
+                                continue;
+                            }
+                            var conditions = stepWithCondition.conditionExpression.right;
+                            foreach (var condition in conditions)
+                            {
+                                stage.AddCondtion(new Condition
+                                {
+                                    LogicalFieldName = stepWithCondition.conditionExpression.left.attributeName,
+                                    ConditionValue = condition.staticValue.primitiveValue,
+                                    NextStageId = Guid.Parse(stepWithCondition.steps.list.Single().stageId)
+                                });
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var step = new Step()
+                        {
+                            IsRequired = stepItem.isProcessRequired,
+                            FieldName = stepItem.steps.list.Single().dataFieldName,
+                            StepName = stepItem.steps.list.Single().controlDisplayName
+                        };
+                        stage.AddStep(step);
+                    }
                 }
                 Stages.Add(stage.StageId, stage);
             }
@@ -177,22 +204,28 @@ namespace BusinessProcessFlowManager
             if (entity.GetAttributeValue<Guid>("processid") != _process.Id) throw new Exception("Wrong process");
             var currentStage = Stages[entity.GetAttributeValue<Guid>("stageid")];
             if (currentStage.IsLastStage()) return MoveState.LastStage;
-            if (!currentStage.Steps.Any(x => x.IsRequired)) NextStage(entityId, entityLogicalName, currentStage, entity.GetAttributeValue<string>("traversedpath"));
+            if (!currentStage.HasRequiredFields())
+            {
+                NextStage(entity, currentStage, entity.GetAttributeValue<string>("traversedpath"));
+                return MoveState.Success;
+            }
             entity = _service.Retrieve(entityLogicalName, entityId, new ColumnSet(currentStage.Steps.Where(x => x.IsRequired).Select(x => x.FieldName).ToArray()));
             if (!AllowMove(currentStage, entity)) return MoveState.RequiredFieldIsEmpty;
-            NextStage(entityId, entityLogicalName, currentStage, currentPath);
+            NextStage(entity, currentStage, currentPath);
             return MoveState.Success;
         }
 
-        private void NextStage(Guid entityId, string entityLogicalName, Stage stage, string currentTraversedPath)
+        private void NextStage(Entity currentEntity, Stage stage, string currentTraversedPath)
         {
-            if (!stage.NextStageId.HasValue) return;
-            var entity = new Entity(entityLogicalName)
+            Guid? nextStageId = null;
+            nextStageId = stage.HasConditions() ? (stage.SelectNextStage(currentEntity) ?? stage.NextStageId) : stage.NextStageId;
+            if (!nextStageId.HasValue) return;
+            var entity = new Entity(currentEntity.LogicalName)
             {
-                Id = entityId,
-                ["stageid"] = stage.NextStageId.Value,
+                Id = currentEntity.Id,
+                ["stageid"] = nextStageId.Value,
                 ["processid"] = _process.Id,
-                ["traversedpath"] = currentTraversedPath + $",{stage.NextStageId.Value}"
+                ["traversedpath"] = currentTraversedPath + $",{nextStageId.Value}"
             };
             _service.Update(entity);
         }
