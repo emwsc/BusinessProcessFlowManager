@@ -21,11 +21,32 @@ namespace BusinessProcessFlowManager
 
             try
             {
+                var logError = new Entity("kc_log")
+                {
+                    ["kc_name"] = "MoveWorkflowAction 1"
+                };
+                service.Create(logError);
                 var entityReference = CrmHelper.GetEntityReferenceFromUrl(service, inDynamicURL.Get(executionContext));
+                var logError2 = new Entity("kc_log")
+                {
+                    ["kc_name"] = "MoveWorkflowAction 2"
+                };
+                service.Create(logError2);
                 BusinessProcessFlowManager.InitForEntity(service, entityReference).Move();
+                var logError3 = new Entity("kc_log")
+                {
+                    ["kc_name"] = "MoveWorkflowAction 3"
+                };
+                service.Create(logError3);
             }
             catch (Exception e)
             {
+                var logError=new Entity("kc_log")
+                {
+                    ["kc_name"]=e.Message,
+                    ["kc_errormessage"] = e.StackTrace + Environment.NewLine + e.InnerException?.Message
+                };
+                service.Create(logError);
                 throw new InvalidPluginExecutionException(e.Message + Environment.NewLine + e.StackTrace + Environment.NewLine + e.InnerException?.Message);
             }
         }

@@ -48,17 +48,47 @@ namespace BusinessProcessFlowManager
             Conditions.Add(condition);
         }
 
+
+        private bool CheckCondition(Condition condition, Entity entity)
+        {
+            bool stageSelected = true;
+            if (entity[condition.LogicalFieldName] == null)
+            {
+                stageSelected = false;
+            }
+            else if (entity[condition.LogicalFieldName] is EntityReference)
+            {
+                if (condition.Operator == Condition.ConditionOperator.Equal && !(entity.GetAttributeValue<EntityReference>(condition.LogicalFieldName).Id == Guid.Parse(condition.ConditionValue.ToString())))
+                    stageSelected = false;
+                else if (condition.Operator == Condition.ConditionOperator.NotEqual && (entity.GetAttributeValue<EntityReference>(condition.LogicalFieldName).Id == Guid.Parse(condition.ConditionValue.ToString())))
+                    stageSelected = false;
+            }
+            else if (condition.Operator == Condition.ConditionOperator.Equal && !entity[condition.LogicalFieldName].Equals(condition.ConditionValue))
+                stageSelected = false;
+            else if (condition.Operator == Condition.ConditionOperator.NotEqual && entity[condition.LogicalFieldName].Equals(condition.ConditionValue))
+                stageSelected = false;
+            return stageSelected;
+        }
+
         public Guid? SelectNextStage(Entity entity)
         {
-            foreach (var condition in Conditions)
+            var conditionGroupsByStage = Conditions.GroupBy(x => x.NextStageId, x => x);
+            Guid? nextStageId = null;
+            foreach (var group in conditionGroupsByStage)
             {
-                if (entity[condition.LogicalFieldName] == null) continue;
-                if (entity[condition.LogicalFieldName] is EntityReference && entity.GetAttributeValue<EntityReference>(condition.LogicalFieldName).Id == Guid.Parse(condition.ConditionValue.ToString()))
-                    return condition.NextStageId;
-                if (entity[condition.LogicalFieldName] == condition.ConditionValue)
-                    return condition.NextStageId;
+                bool stageSelected = true;
+                foreach (var condition in group)
+                {
+                    stageSelected = CheckCondition(condition, entity);
+                    if(!stageSelected) break;
+                }
+                if (!stageSelected) continue;
+                nextStageId = @group.Key;
+                break;
             }
-            return null;
+            if (!nextStageId.HasValue && NextStageId.HasValue)
+                nextStageId = NextStageId;
+            return nextStageId;
         }
 
         public bool IsLastStage() => NextStageId == null && Conditions == null;

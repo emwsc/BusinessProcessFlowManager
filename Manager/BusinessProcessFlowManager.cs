@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.AccessControl;
 using System.Web.Script.Serialization;
 using BusinessProcessFlowManager.Manager;
 using Microsoft.Xrm.Sdk;
@@ -82,6 +83,30 @@ namespace BusinessProcessFlowManager
             Convert();
         }
 
+
+        private void ConditionsTreeToArray(Leaf leaf, Guid nextStageId, ref List<Condition> conditions)
+        {
+            //if (condition == null) return null;
+            //if (condition.right != null && condition.right.Any())
+            //    return GetRightCondition(condition.right.SingleOrDefault());
+            //return condition;
+            //if(leaf.left!=null)
+            if (leaf.right != null && leaf.right.Any() && leaf.left != null && !string.IsNullOrWhiteSpace(leaf.left.attributeName))
+            {
+                conditions.Add(new Condition
+                {
+                    LogicalFieldName = leaf.left.attributeName,
+                    ConditionValue = leaf.right.Single().staticValue.primitiveValue,
+                    NextStageId = nextStageId,
+                    Operator = Condition.SelectOperator(leaf.conditionOperatoroperator)
+                });
+            }
+            if (leaf.left != null)
+                ConditionsTreeToArray(leaf.left, nextStageId, ref conditions);
+            if (leaf.right?.SingleOrDefault() != null)
+                ConditionsTreeToArray(leaf.right.SingleOrDefault(), nextStageId, ref conditions);
+        }
+
         private void Convert()
         {
             foreach (var item in _businessProcessFlowClientData.steps.list)
@@ -102,16 +127,11 @@ namespace BusinessProcessFlowManager
                                 stage.NextStageId = Guid.Parse(stepWithCondition.steps.list.Single().stageId);
                                 continue;
                             }
-                            var conditions = stepWithCondition.conditionExpression.right;
-                            foreach (var condition in conditions)
-                            {
-                                stage.AddCondtion(new Condition
-                                {
-                                    LogicalFieldName = stepWithCondition.conditionExpression.left.attributeName,
-                                    ConditionValue = condition.staticValue.primitiveValue,
-                                    NextStageId = Guid.Parse(stepWithCondition.steps.list.Single().stageId)
-                                });
-                            }
+                            List<Condition> conditions = new List<Condition>();
+                            ConditionsTreeToArray(stepWithCondition.conditionExpression, Guid.Parse(stepWithCondition.steps.list.Single().stageId), ref conditions);
+                            // conditions.GroupBy(x => x.NextStageId, x => x);
+                            if (stage.Conditions == null) stage.Conditions = new List<Condition>();
+                            stage.Conditions.AddRange(conditions);
                         }
                     }
                     else
